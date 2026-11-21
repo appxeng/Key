@@ -11,17 +11,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Find project folder
+      - name: Find project folder (unzips automatically if you uploaded the zip)
         run: |
           CFG=$(find . -name capacitor.config.json -not -path '*/node_modules/*' | head -1)
           if [ -z "$CFG" ]; then
-            echo "::error::capacitor.config.json not found. Upload the EXTRACTED files of the project (package.json, capacitor.config.json, www/, assets/, scripts/), not the zip."
+            ZIP=$(find . -maxdepth 2 -iname '*.zip' | head -1)
+            if [ -n "$ZIP" ]; then
+              echo "Found zip: $ZIP - extracting"
+              mkdir -p _project
+              unzip -q -o "$ZIP" -d _project
+              CFG=$(find _project -name capacitor.config.json -not -path '*/node_modules/*' | head -1)
+            fi
+          fi
+          if [ -z "$CFG" ]; then
+            echo "::error::capacitor.config.json not found. Put the project zip (or its extracted files) in the repo."
             echo "Files in repo:"; find . -maxdepth 2 -not -path './.git*' | head -50
             exit 1
           fi
           DIR=$(dirname "$CFG")
           if [ ! -f "$DIR/package.json" ]; then
-            echo "::error::package.json is missing next to capacitor.config.json ($DIR). Upload package.json too."
+            echo "::error::package.json is missing next to capacitor.config.json ($DIR)."
             exit 1
           fi
           echo "Project folder: $DIR"
